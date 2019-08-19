@@ -6,6 +6,7 @@ extern crate z3;
 use std::convert::TryInto;
 use z3::ast::Ast;
 use z3::*;
+use z3::sort::Sort;
 
 #[cfg(feature = "arbitrary-size-numeral")]
 extern crate num;
@@ -109,8 +110,7 @@ fn test_format() {
     let ast = ast::Int::new_const(&ctx, "x");
     assert_eq!("x", format!("{}", ast));
 
-    let int = Sort::int(&ctx);
-    assert_eq!("Int", format!("{}", int));
+    assert_eq!("Int", format!("{}", Sort::Int));
 }
 
 #[test]
@@ -199,7 +199,7 @@ fn function_ref_count() {
     let ctx = Context::new(&cfg);
     let solver = Solver::new(&ctx);
 
-    let int_sort = Sort::int(&ctx);
+    let int_sort = Sort::Int;
 
     let _f = FuncDecl::new(&ctx, "f", &[&int_sort], &int_sort);
     let _g = FuncDecl::new(&ctx, "g", &[&int_sort], &int_sort);

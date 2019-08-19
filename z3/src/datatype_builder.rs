@@ -1,6 +1,7 @@
 use std::{convert::TryInto, ptr::null_mut};
 use z3_sys::*;
-use {Context, DatatypeBuilder, DatatypeSort, DatatypeVariant, FuncDecl, Sort, Symbol};
+use {Context, DatatypeBuilder, DatatypeSort, DatatypeVariant, FuncDecl, Symbol, SortRef};
+use sort::Sort;
 
 impl<'ctx> DatatypeBuilder<'ctx> {
     pub fn new(ctx: &'ctx Context) -> Self {
@@ -10,20 +11,17 @@ impl<'ctx> DatatypeBuilder<'ctx> {
         }
     }
 
-    pub fn variant(mut self, name: &str, fields: &[(&str, &Sort)]) -> Self {
+    pub fn variant<'out_ctx>(mut self, name: &str, fields: &[(&str, &Sort)]) -> Self {
         let recognizer_name_sym = Symbol::String(format!("is-{}", name)).as_z3_symbol(self.ctx);
         let name_sym = Symbol::String(name.to_string()).as_z3_symbol(self.ctx);
 
-        assert!(fields
-            .iter()
-            .all(|(name, sort)| sort.ctx.z3_ctx == self.ctx.z3_ctx));
 
         let mut field_names: Vec<Z3_symbol> = Vec::with_capacity(fields.len());
         let mut field_sorts = Vec::with_capacity(fields.len());
 
         for (name, sort) in fields {
             field_names.push(Symbol::String(name.to_string()).as_z3_symbol(self.ctx));
-            field_sorts.push(sort.z3_sort);
+            field_sorts.push(sort.as_z3_sort(self.ctx));
         }
 
         // This is unused.
@@ -58,11 +56,7 @@ impl<'ctx> DatatypeBuilder<'ctx> {
                 constructors.len().try_into().unwrap(),
                 constructors.as_mut_ptr(),
             );
-            Z3_inc_ref(self.ctx.z3_ctx, Z3_sort_to_ast(self.ctx.z3_ctx, s));
-            Sort {
-                ctx: self.ctx,
-                z3_sort: s,
-            }
+            Sort::Ref(SortRef::new(self.ctx, s))
         };
 
         // create independent fields

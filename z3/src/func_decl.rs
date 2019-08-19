@@ -4,7 +4,8 @@ use std::convert::TryInto;
 use std::ffi::CStr;
 use std::fmt;
 use z3_sys::*;
-use {Context, FuncDecl, Sort, Symbol, Z3_MUTEX};
+use {Context, FuncDecl, Symbol, Z3_MUTEX};
+use sort::Sort;
 
 impl<'ctx> FuncDecl<'ctx> {
     pub fn new<S: Into<Symbol>>(
@@ -13,10 +14,7 @@ impl<'ctx> FuncDecl<'ctx> {
         domain: &[&Sort<'ctx>],
         range: &Sort<'ctx>,
     ) -> Self {
-        assert!(domain.iter().all(|s| s.ctx.z3_ctx == ctx.z3_ctx));
-        assert_eq!(ctx.z3_ctx, range.ctx.z3_ctx);
-
-        let domain: Vec<_> = domain.iter().map(|s| s.z3_sort).collect();
+        let domain: Vec<_> = domain.iter().map(|s| s.as_z3_sort(ctx)).collect();
 
         unsafe {
             Self::from_raw(
@@ -26,7 +24,7 @@ impl<'ctx> FuncDecl<'ctx> {
                     name.into().as_z3_symbol(ctx),
                     domain.len().try_into().unwrap(),
                     domain.as_ptr(),
-                    range.z3_sort,
+                    range.as_z3_sort(ctx),
                 ),
             )
         }
@@ -45,14 +43,14 @@ impl<'ctx> FuncDecl<'ctx> {
     /// If the function declaration is a constant, then the arity is `0`.
     ///
     /// ```
-    /// # use z3::{Config, Context, FuncDecl, Solver, Sort, Symbol};
+    /// # use z3::{Config, Context, FuncDecl, Solver, sort::Sort, Symbol};
     /// # let cfg = Config::new();
     /// # let ctx = Context::new(&cfg);
     /// let f = FuncDecl::new(
     ///     &ctx,
     ///     "f",
-    ///     &[&Sort::int(&ctx), &Sort::real(&ctx)],
-    ///     &Sort::int(&ctx));
+    ///     &[&Sort::Int, &Sort::Real],
+    ///     &Sort::Int);
     /// assert_eq!(f.arity(), 2);
     /// ```
     pub fn arity(&self) -> usize {
@@ -89,6 +87,12 @@ impl<'ctx> fmt::Display for FuncDecl<'ctx> {
             Ok(s) => write!(f, "{}", s),
             Err(_) => Result::Err(fmt::Error),
         }
+    }
+}
+
+impl<'ctx> fmt::Debug for FuncDecl<'ctx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        <Self as fmt::Display>::fmt(self, f)
     }
 }
 
